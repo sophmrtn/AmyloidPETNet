@@ -1,9 +1,7 @@
 import numpy as np
-from skimage.segmentation import slic
 import nibabel as nib
 import torch
 import os
-import shutil 
 
 torch_device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -20,7 +18,7 @@ def load_nifti(nii_path, multichannel=False):
     img_np = img_nii.get_fdata()
 
     if len(img_np.shape) == 4:
-        if multichannel==False:
+        if multichannel is False:
             img_np = img_np[:, :, :, 0]
 
     return img_np
@@ -45,4 +43,4 @@ def clean_cache(cdir):
         path_to_file = os.path.join(cdir, file)
         os.remove(path_to_file)
     print(f"removed {len(filtered_files)} files")
-    print(f"clean-up complete")
+    print("clean-up complete")

@@ -1,7 +1,9 @@
 import argparse
-from DeepPET.data import *
-from DeepPET.architecture import *
-from DeepPET.model import *
+import os
+import pandas as pd
+from DeepPET.data import DeepPETDataGenerator
+from DeepPET.architecture import DeepPETEncoderGradCAM
+from DeepPET.model import DeepPETModelManager
 
 # initialize parser
 parser = argparse.ArgumentParser(description='DeepPET model testing')
@@ -43,4 +45,4 @@ finally:
     for file in filtered_files:
         path_to_file = os.path.join(cdir, file)
         os.remove(path_to_file)
-    print(f"clean-up complete")
+    print("clean-up complete")

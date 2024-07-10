@@ -1,22 +1,16 @@
 import sys
 import os
-import shutil
-from os import X_OK
-from collections import OrderedDict
 import time
 # from medcam.medcam_utils import generate_attention_map
 import numpy as np
-from numpy.lib.twodim_base import triu_indices
 import pandas as pd
 import matplotlib.pyplot as plt
 import monai
 from monai.data import DataLoader
 import torch
 from torch.autograd import Variable
-import torch.nn.functional as F
 from torchsummary import summary
 from lime import lime_image
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 class DeepPETModelManager:

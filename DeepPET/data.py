@@ -1,24 +1,14 @@
 import os
 import shutil
-from monai.data.dataset import PersistentDataset
-from nibabel import orientations
 import numpy as np
-from numpy.testing._private.utils import IgnoreException
-import pandas as pd
 import matplotlib.pyplot as plt
-import nibabel as nib
-from sklearn.model_selection import GroupShuffleSplit, GroupKFold
 from DeepPET.stratified_group_split import StratifiedGroupKFold
 from skimage import measure, morphology
-from skimage.io import imsave
-from typing import Any, Dict, Hashable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Dict, Hashable, Mapping
 from monai.config import KeysCollection
 from monai.data import Dataset, DataLoader, PersistentDataset
 from monai.transforms import (
     LoadImaged,
-    Orientationd,
-    AsChannelFirstd,
-    AsChannelLastd,
     Compose,
     ScaleIntensityRangePercentilesd,
     NormalizeIntensityd,
@@ -27,10 +17,8 @@ from monai.transforms import (
     CropForegroundd,
     ToTensord,
     Spacingd,
-    SaveImaged,
     transform,
-    RandomizableTransform,
-    InvertibleTransform,
+    EnsureChannelFirstd,
 )
 
 
@@ -251,7 +239,7 @@ class DeepPETDataGenerator:
             # Orientationd(keys=["img"], axcodes="RAS"),
             # expand channel because OASIS3 has 3 channels only
             ExpandChanneld(keys=["img"]),
-            AsChannelFirstd(keys=["img"], channel_dim=-1),
+            EnsureChannelFirstd(keys=["img"], channel_dim=-1),
             # set background pixels to 0
             SuppressBackgroundd(keys=["img"]),
             # crop out pixels with 0 values
@@ -290,7 +278,7 @@ class DeepPETDataGenerator:
             LoadImaged(keys=["img"]),
             # expand channel because OASIS3 has 3 channels only
             ExpandChanneld(keys=["img"]),
-            AsChannelFirstd(keys=["img"], channel_dim=-1),
+            EnsureChannelFirstd(keys=["img"], channel_dim=-1),
             # set background pixels to 0
             SuppressBackgroundd(keys=["img"]),
             # crop out pixels with 0 values
@@ -317,7 +305,7 @@ class DeepPETDataGenerator:
             LoadImaged(keys=["img"]),
             # expand channel because OASIS3 has 3 channels only
             ExpandChanneld(keys=["img"]),
-            AsChannelFirstd(keys=["img"], channel_dim=-1),
+            EnsureChannelFirstd(keys=["img"], channel_dim=-1),
             # resample pixel dimensions to (2mm, 2mm, 2mm)
             Spacingd(
                 keys=["img"],
@@ -339,7 +327,7 @@ class DeepPETDataGenerator:
             LoadImaged(keys=["img"]),
             # expand channel because OASIS3 has 3 channels only
             ExpandChanneld(keys=["img"]),
-            AsChannelFirstd(keys=["img"], channel_dim=-1),
+            EnsureChannelFirstd(keys=["img"], channel_dim=-1),
             # # resample pixel dimensions to (2mm, 2mm, 2mm)
             Spacingd(
                 keys=["img"],
@@ -366,7 +354,7 @@ class DeepPETDataGenerator:
 
         # split into train & val and test folds
         train_idx, test_idx = next(train_test_split.split(X=self.fpaths, y=self.labels, groups=self.subjects))
-        print(f"\ntest-train split...")
+        print("\ntest-train split...")
         print(f"{len(self.fpaths)} total images")
         print(f"{len(test_idx)} testing images")
         print(f"{len(train_idx)} training images")
@@ -440,7 +428,7 @@ class DeepPETDataGenerator:
         preprocess a list of images [fpaths] with the generator's preprocessing pipeline or a custom list of transforms [transform_lst]
         """
 
-        if transform_lst != None:
+        if transform_lst is not None:
             preprocess_pl = Compose(transform_lst)
         else:
             transform_lst = self.prediction_transform_lst.copy()

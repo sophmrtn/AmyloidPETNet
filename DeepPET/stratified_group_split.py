@@ -1,13 +1,12 @@
 # adapted from https://github.com/scikit-learn/scikit-learn/blob/36958fb24/sklearn/model_selection/_split.py#L759
 # ?StratifiedGroupKFold in the installed version of scikit-learn frequently throws errors 
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 import numpy as np
 import warnings
-from sklearn.model_selection._split import _BaseKFold, _RepeatedSplits
-from sklearn.utils import indexable, check_random_state, _safe_indexing
-from sklearn.utils import _approximate_mode
-from sklearn.utils.validation import _num_samples, column_or_1d
+from sklearn.model_selection._split import _BaseKFold
+from sklearn.utils import check_random_state
+from sklearn.utils.validation import column_or_1d
 from sklearn.utils.multiclass import type_of_target
 
 class StratifiedGroupKFold(_BaseKFold):

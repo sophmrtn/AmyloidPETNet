@@ -1,21 +1,7 @@
-import sys
-import os
-import shutil
-from os import X_OK
 from collections import OrderedDict
-import time
-import numpy as np
-from numpy.lib.twodim_base import triu_indices
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.metrics import roc_auc_score, precision_score, f1_score, roc_curve
-import monai
-from monai.data import DataLoader
 import torch
 from torch import nn
-from torch.autograd import Variable
 import torch.nn.functional as F
-from torchsummary import summary
 
 
 class DeepPETModel(torch.nn.Module):
