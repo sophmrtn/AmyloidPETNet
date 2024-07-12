@@ -133,3 +133,4 @@ dmypy.json
 
 # Specific project output files and directories
 .DS_Store
+*.csv
