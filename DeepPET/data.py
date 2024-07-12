@@ -1,5 +1,6 @@
 import os
 import shutil
+import glob
 import numpy as np
 import matplotlib.pyplot as plt
 from DeepPET.stratified_group_split import StratifiedGroupKFold
@@ -20,6 +21,7 @@ from monai.transforms import (
     transform,
     EnsureChannelFirstd,
 )
+import torch
 
 
 
@@ -223,17 +225,25 @@ class DebugShaped(transform.MapTransform):
 
 
 class DeepPETDataGenerator:
-    def __init__(self, subjects=None, tracers=None, fpaths=None, labels=None):
+    def __init__(self, data_dir, subjects=None, tracers=None, fpaths=None, labels=None):
 
         self.random_state = 2024
-        self.fpaths = np.array(fpaths)
+        subject_filepaths = []
+        for amypad_id in fpaths:
+                # glob.glob uses '**' to search within 0 to any number of subdirectories for the file 
+                filepaths = glob.glob(os.path.join(data_dir, '**', f"*{amypad_id.replace('-','')}*T1w*pet.nii.gz"), recursive=True)
+                if len(filepaths) == 0:
+                    raise ValueError(f"No scans found for subject {amypad_id}. Aborting.")
+                else:
+                    subject_filepaths.append(filepaths[0]) 
+        self.fpaths = np.array(subject_filepaths)
         self.subjects = subjects
         self.tracers = tracers
-        self.labels = labels
+        self.labels = torch.from_numpy(np.array((labels=='Positive').astype(bool)))
 
         # training transforms
         self.transform_lst = [
-            DebugBefored(keys=["debug"]),
+            # DebugBefored(keys=["debug"]),
             LoadImaged(keys=["img"]),
             # TODO: raise GitHub issue on orientation issue
             # Orientationd(keys=["img"], axcodes="RAS"),
@@ -260,10 +270,9 @@ class DeepPETDataGenerator:
                 keys=["img"],
                 prob=0.5,
                 rotate_range=(0.10, 0.10, 0.10),
-                as_tensor_output=True,
                 padding_mode="zeros",
             ),
-            DebugAfterd(keys=["debug"]),
+            # DebugAfterd(keys=["debug"]),
             # clip intensity at 5 and 95 percentile
             ScaleIntensityRangePercentilesd(
                 keys=["img"], lower=5, upper=95, b_min=0, b_max=100, clip=True
@@ -277,13 +286,13 @@ class DeepPETDataGenerator:
         self.prediction_transform_lst = [
             LoadImaged(keys=["img"]),
             # expand channel because OASIS3 has 3 channels only
-            ExpandChanneld(keys=["img"]),
+            # ExpandChanneld(keys=["img"]),
             EnsureChannelFirstd(keys=["img"], channel_dim=-1),
             # set background pixels to 0
-            SuppressBackgroundd(keys=["img"]),
-            # crop out pixels with 0 values
-            CropForegroundd(keys=["img"], source_key="img"),
-            # resample pixel dimensions to (2mm, 2mm, 2mm)
+            # SuppressBackgroundd(keys=["img"]),
+            # # crop out pixels with 0 values
+            # CropForegroundd(keys=["img"], source_key="img"),
+            # # resample pixel dimensions to (2mm, 2mm, 2mm)
             Spacingd(
                 keys=["img"],
                 pixdim=(2, 2, 2),
