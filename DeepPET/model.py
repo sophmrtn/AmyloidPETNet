@@ -11,13 +11,20 @@ import torch
 from torch.autograd import Variable
 from torchsummary import summary
 from lime import lime_image
-
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 class DeepPETModelManager:
     def __init__(self, model, odir) -> None:
 
-        print(f"GPU available: {torch.cuda.is_available()}")
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        cuda_available = torch.cuda.is_available()
+        mps_available = torch.backends.mps.is_available()
+        print(f"GPU available: {(cuda_available | mps_available)}")
+        if mps_available:
+            self.device = 'mps'
+        elif cuda_available:
+            self.device = 'cuda:0'
+        else:
+            self.device = 'cpu'
         self.model = model.to(self.device)
 
         self.odir = odir
@@ -69,7 +76,7 @@ class DeepPETModelManager:
         self.batch_size = batch_size
         print(f"batch_size: {self.batch_size}")
 
-        # scheduler = ReduceLROnPlateau(self.optimizer, mode='min', patience=10, factor=0.5)
+        scheduler = ReduceLROnPlateau(self.optimizer, mode='min', patience=10, factor=0.5)
 
         train_steps = np.floor(len(train_ds) / self.batch_size)
         val_steps = np.floor(len(val_ds) / self.batch_size)
@@ -95,6 +102,7 @@ class DeepPETModelManager:
             self.model.train()
             for step in np.arange(train_steps):
                 batch_data = next(train_loader_iter)
+                
                 inputs, labels = batch_data["img"].to(self.device), batch_data["label"].to(self.device)
 
                 self.optimizer.zero_grad()
@@ -138,7 +146,7 @@ class DeepPETModelManager:
                 epoch_val_loss_values.append(epoch_val_loss)
                 epoch_val_accuracy_values.append(epoch_val_accuracy)
 
-                # scheduler.step(epoch_val_loss)
+                scheduler.step(epoch_val_loss)
 
             # save models
             torch.save({"epoch": epoch + 1, "model": self.model.state_dict(), "optimizer": self.optimizer.state_dict()}, self.checkpoint)
@@ -204,10 +212,11 @@ class DeepPETModelManager:
                     outputs[i] = test_outputs.flatten().detach()
                     print(f"making predictions: {i+1}/{len(test_ds)} –  {outputs[i]}")
 
-                except:
+                except Exception:
                     print(f"making predictions: {i+1}/{len(test_ds)} –  failed")
             return outputs
-        except:
+        except Exception:
+            print('failed')
             return outputs
 
     def generate_saliency_maps(self, img):
