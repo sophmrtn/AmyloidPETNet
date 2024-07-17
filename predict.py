@@ -1,10 +1,10 @@
 import argparse
 import os
-import math
 import pandas as pd
 from DeepPET.data import DeepPETDataGenerator
 from DeepPET.architecture import DeepPETEncoderGradCAM
 from DeepPET.model import DeepPETModelManager
+from utils import sigmoid
 
 # initialize parser
 parser = argparse.ArgumentParser(description='DeepPET model testing')
@@ -30,9 +30,6 @@ cdir = "/tmp"
 # initialize model and manager
 model = DeepPETEncoderGradCAM()
 model_manager = DeepPETModelManager(model=model, odir=odir)
-
-def sigmoid(x):
-    return 1 / (1 + math.exp(-x))
 
 try:
     # predict
