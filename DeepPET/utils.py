@@ -2,6 +2,7 @@ import numpy as np
 import nibabel as nib
 import torch
 import os
+import math
 
 torch_device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -44,3 +45,6 @@ def clean_cache(cdir):
         os.remove(path_to_file)
     print(f"removed {len(filtered_files)} files")
     print("clean-up complete")
+
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))

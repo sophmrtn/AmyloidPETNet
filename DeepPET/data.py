@@ -239,7 +239,7 @@ class DeepPETDataGenerator:
         self.fpaths = np.array(subject_filepaths)
         self.subjects = subjects
         self.tracers = tracers
-        self.labels = torch.from_numpy(np.array((labels=='Positive').astype(bool)))
+        self.labels = torch.from_numpy(labels)
 
         # training transforms
         self.transform_lst = [
@@ -289,9 +289,9 @@ class DeepPETDataGenerator:
             # ExpandChanneld(keys=["img"]),
             EnsureChannelFirstd(keys=["img"], channel_dim=-1),
             # set background pixels to 0
-            # SuppressBackgroundd(keys=["img"]),
+            SuppressBackgroundd(keys=["img"]),
             # # crop out pixels with 0 values
-            # CropForegroundd(keys=["img"], source_key="img"),
+            CropForegroundd(keys=["img"], source_key="img"),
             # # resample pixel dimensions to (2mm, 2mm, 2mm)
             Spacingd(
                 keys=["img"],
@@ -480,7 +480,7 @@ class DeepPETDataGenerator:
             plt.imshow(map_np[k, :, :], cmap="jet", alpha=0.5)
             plt.colorbar()
             plt.clim(0, 255)
-            plt.savefig(os.path.join(odir, f"saggital_{k}.png"))
+            plt.savefig(os.path.join(odir, f"sagittal_{k}.png"))
             plt.close()
 
         for k in np.arange(img_np.shape[1]):
