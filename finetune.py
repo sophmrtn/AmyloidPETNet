@@ -36,10 +36,13 @@ ft_datagen = DeepPETDataGenerator(
 )
 
 # split into training and validation by ids
-train_ids, val_ids = train_test_split(range(len(args.ids)), test_size=0.2, random_state=0) 
+train_ids, val_ids = train_test_split(range(len(args.ids)), test_size=0.5, random_state=0) 
 
 ft_ds = ft_datagen.create_dataset(cache_dir="/tmp", idx=train_ids, mode="training")
 ft_val_ds = ft_datagen.create_dataset(cache_dir="/tmp", idx=val_ids, mode="validation")
 
+# pos_weight
+pos_w = ft_df.query('amypad_id in @train_ids & pet_vr_classification==0').shape[0]/ft_df.query('amypad_id in @train_ids & pet_vr_classification==1').shape[0]
+
 # train the model
-model_manager.train_model(ft_ds, ft_val_ds, loss_function=BCEWithLogitsLoss(), optimizer=AdamW(model.parameters(), lr=0.01), num_epochs=20, batch_size=16)
+model_manager.train_model(ft_ds, ft_val_ds, loss_function=BCEWithLogitsLoss(pos_weight=torch.tensor([pos_w])), optimizer=AdamW(model.parameters(), lr=0.01), num_epochs=20, batch_size=16)
