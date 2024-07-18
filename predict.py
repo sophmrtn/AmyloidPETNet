@@ -4,7 +4,7 @@ import pandas as pd
 from DeepPET.data import DeepPETDataGenerator
 from DeepPET.architecture import DeepPETEncoderGradCAM
 from DeepPET.model import DeepPETModelManager
-from utils import sigmoid
+from DeepPET.utils import sigmoid
 
 # initialize parser
 parser = argparse.ArgumentParser(description='DeepPET model testing')
