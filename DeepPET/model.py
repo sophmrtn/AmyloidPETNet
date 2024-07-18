@@ -30,8 +30,10 @@ class DeepPETModelManager:
         self.odir = odir
         if not os.path.isdir(self.odir):
             os.mkdir(self.odir)
-        self.checkpoint = os.path.join(self.odir, "model.pth")
-        self.history = os.path.join(self.odir, "history.csv")
+
+        timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.checkpoint = os.path.join(self.odir, f"model_{timestr}.pth")
+        self.history = os.path.join(self.odir, f"history_{timestr}.csv")
 
         self.optimizer = None
         self.current_epoch = None
