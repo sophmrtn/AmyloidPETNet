@@ -30,14 +30,7 @@ class DeepPETModelManager:
         if not os.path.isdir(self.odir):
             os.mkdir(self.odir)
 
-        if checkpoint is None:
-            timestr = time.strftime("%Y%m%d-%H%M%S")
-            self.checkpoint = os.path.join(self.odir, f"model_{timestr}.pth")
-        else:
-            self.checkpoint = checkpoint
-            model = self.load_checkpoint()
-
-        self.history = os.path.join(self.odir, f"history_{timestr}.csv")
+        self.checkpoint = checkpoint
         self.model = model.to(self.device)
 
         self.optimizer = None
@@ -69,11 +62,19 @@ class DeepPETModelManager:
         self.current_epoch = model_checkpoint["epoch"]
 
         # create new checkpoint for ft model
-        timestr = time.strftime("%Y%m%d-%H%M%S")
-        self.checkpoint = f"{os.path.splitext(os.path.basename(self.checkpoint))[0]}_ft.pth"
+        self.checkpoint = os.path.join(self.odir, f"{os.path.splitext(os.path.basename(self.checkpoint))[0]}_ft.pth")
         return self.model
 
     def train_model(self, train_ds, val_ds, loss_function, num_epochs, optimizer, batch_size):
+        timestr = time.strftime("%Y%m%d-%H%M%S")
+
+        if self.checkpoint is not None:
+            self.model = self.load_checkpoint()
+            print(f'Finetuning from epoch: {self.current_epoch}')
+        else:
+            self.checkpoint = os.path.join(self.odir, f"model_{timestr}.pth")
+
+        self.history = os.path.join(self.odir, f"history_{timestr}.csv")
 
         self.loss_function = loss_function
         self.num_epochs = num_epochs
@@ -112,6 +113,10 @@ class DeepPETModelManager:
 
                 self.optimizer.zero_grad()
                 outputs = self.model(inputs)
+
+                if self.loss_function.pos_weight is not None:
+                    self.loss_function.pos_weight = self.loss_function.pos_weight.to(self.device)
+
                 loss = self.loss_function(outputs.float(), labels.unsqueeze(1).float())
                 loss.backward()
                 self.optimizer.step()

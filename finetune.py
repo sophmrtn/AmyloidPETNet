@@ -37,6 +37,10 @@ ft_df = pd.read_csv(args.metadata)
 # filter by ids
 ft_df = ft_df[ft_df['amypad_id'].isin(subject_ids)]
 
+# If label column is a string convert to int
+if type(ft_df['pet_vr_classification'].values[0]) is str:
+    ft_df['pet_vr_classification'] = (ft_df['pet_vr_classification']=="Positive").astype(int)
+
 ft_datagen = DeepPETDataGenerator(
     args.data_dir,
     ids=subject_ids,
