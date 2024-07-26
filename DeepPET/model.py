@@ -14,7 +14,7 @@ from lime import lime_image
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 class DeepPETModelManager:
-    def __init__(self, model, odir) -> None:
+    def __init__(self, model, odir, checkpoint:str=None) -> None:
 
         cuda_available = torch.cuda.is_available()
         mps_available = torch.backends.mps.is_available()
@@ -22,18 +22,23 @@ class DeepPETModelManager:
         if mps_available:
             self.device = 'mps'
         elif cuda_available:
-            self.device = 'cuda:0'
+            self.device = 'cuda'
         else:
             self.device = 'cpu'
-        self.model = model.to(self.device)
 
         self.odir = odir
         if not os.path.isdir(self.odir):
             os.mkdir(self.odir)
 
-        timestr = time.strftime("%Y%m%d-%H%M%S")
-        self.checkpoint = os.path.join(self.odir, f"model_{timestr}.pth")
+        if checkpoint is None:
+            timestr = time.strftime("%Y%m%d-%H%M%S")
+            self.checkpoint = os.path.join(self.odir, f"model_{timestr}.pth")
+        else:
+            self.checkpoint = checkpoint
+            model = self.load_checkpoint()
+
         self.history = os.path.join(self.odir, f"history_{timestr}.csv")
+        self.model = model.to(self.device)
 
         self.optimizer = None
         self.current_epoch = None
@@ -54,20 +59,18 @@ class DeepPETModelManager:
 
     def load_checkpoint(self):
 
-        print(f"loading checkpoint from {self.load_checkpoint}")
+        print(f"loading checkpoint from {self.checkpoint}")
 
-        if not torch.cuda.is_available():
-            model_checkpoint = torch.load(
-                self.checkpoint, map_location=torch.device("cpu")
-            )
-        else:
-            model_checkpoint = torch.load(self.checkpoint)
+        model_checkpoint = torch.load(self.checkpoint, map_location=self.device)
 
         self.model.load_state_dict(model_checkpoint["model"])
         if self.optimizer is not None:
             self.optimizer.load_state_dict(model_checkpoint["optimizer"])
         self.current_epoch = model_checkpoint["epoch"]
 
+        # create new checkpoint for ft model
+        timestr = time.strftime("%Y%m%d-%H%M%S")
+        self.checkpoint = f"{os.path.splitext(os.path.basename(self.checkpoint))[0]}_ft.pth"
         return self.model
 
     def train_model(self, train_ds, val_ds, loss_function, num_epochs, optimizer, batch_size):

@@ -4,8 +4,10 @@ from DeepPET.model import DeepPETModelManager
 from DeepPET.architecture import DeepPETEncoderGradCAM
 from DeepPET.data import DeepPETDataGenerator
 import argparse
+import os
 from sklearn.model_selection import train_test_split
 import pandas as pd
+import torch
 from torch.nn import BCEWithLogitsLoss
 from torch.optim import AdamW
 
@@ -15,31 +17,38 @@ parser.add_argument('data_dir',
 parser.add_argument('--metadata', nargs='?',
                         help='path to metadata')  # assumes csv file is within data_dir if unspecified 
 parser.add_argument('--ids', nargs='*',
-                        help='list of IDs to include for training. Example usage: --ids 1 2 3 ')
+                        help='text or list of IDs to include for training.')
 args = parser.parse_args()
+
+def read_from_txt(filepath):
+    with open(filepath, 'r') as f:
+        lines = f.read().splitlines()
+    return lines
+subject_ids = read_from_txt(args.ids[0]) if os.path.exists(args.ids[0]) else args.ids 
 
 # Load in model
 model = DeepPETEncoderGradCAM()
-model_manager = DeepPETModelManager(model=model, odir='model')
+model_manager = DeepPETModelManager(model=model, odir='model', checkpoint="model/model.pth")
 
 # Fine tuning
 
 # Create dataloader from AMYPAD ds
 ft_df = pd.read_csv(args.metadata)
-# filter by test ids
-ft_df = ft_df[ft_df['amypad_id'].isin(args.ids)]
+# filter by ids
+ft_df = ft_df[ft_df['amypad_id'].isin(subject_ids)]
 
 ft_datagen = DeepPETDataGenerator(
     args.data_dir,
-    fpaths=args.ids,
+    ids=subject_ids,
     labels=ft_df['pet_vr_classification'].values,
 )
 
-# split into training and validation by ids
-train_ids, val_ids = train_test_split(range(len(args.ids)), test_size=0.5, random_state=0) 
+# split into training and validation indexes
+train_idxs, val_idxs = train_test_split(range(len(subject_ids)), test_size=0.5, random_state=0) 
+train_ids = [subject_ids[i] for i in train_idxs]
 
-ft_ds = ft_datagen.create_dataset(cache_dir="/tmp", idx=train_ids, mode="training")
-ft_val_ds = ft_datagen.create_dataset(cache_dir="/tmp", idx=val_ids, mode="validation")
+ft_ds = ft_datagen.create_dataset(cache_dir="/tmp", idx=train_idxs, mode="training")
+ft_val_ds = ft_datagen.create_dataset(cache_dir="/tmp", idx=val_idxs, mode="validation")
 
 # pos_weight
 pos_w = ft_df.query('amypad_id in @train_ids & pet_vr_classification==0').shape[0]/ft_df.query('amypad_id in @train_ids & pet_vr_classification==1').shape[0]

@@ -225,20 +225,20 @@ class DebugShaped(transform.MapTransform):
 
 
 class DeepPETDataGenerator:
-    def __init__(self, data_dir, subjects=None, tracers=None, fpaths=None, labels=None):
+    def __init__(self, data_dir, ids=None, labels=None):
 
         self.random_state = 2024
         subject_filepaths = []
-        for amypad_id in fpaths:
+        for amypad_id in ids:
                 # glob.glob uses '**' to search within 0 to any number of subdirectories for the file 
-                filepaths = glob.glob(os.path.join(data_dir, '**', f"*{amypad_id.replace('-','')}*T1w*pet.nii.gz"), recursive=True)
+                filepaths = glob.glob(os.path.join(data_dir, '**', f"*{amypad_id.replace('-','')}*T1w_pet.nii.gz"), recursive=True)
                 if len(filepaths) == 0:
                     raise ValueError(f"No scans found for subject {amypad_id}. Aborting.")
                 else:
                     subject_filepaths.append(filepaths[0]) 
         self.fpaths = np.array(subject_filepaths)
-        self.subjects = subjects
-        self.tracers = tracers
+        self.subjects = None
+        self.tracers = None
         self.labels = torch.from_numpy(labels)
 
         # training transforms
