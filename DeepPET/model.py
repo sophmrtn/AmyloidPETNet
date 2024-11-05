@@ -57,8 +57,8 @@ class DeepPETModelManager:
         model_checkpoint = torch.load(self.checkpoint, map_location=self.device)
 
         self.model.load_state_dict(model_checkpoint["model"])
-        if self.optimizer is not None:
-            self.optimizer.load_state_dict(model_checkpoint["optimizer"])
+        # Resume training from last checkpoint
+        self.optimizer.load_state_dict(model_checkpoint["optimizer"])
         self.current_epoch = model_checkpoint["epoch"]
 
         # create new checkpoint for ft model
@@ -68,18 +68,22 @@ class DeepPETModelManager:
     def train_model(self, train_ds, val_ds, loss_function, num_epochs, optimizer, batch_size):
         timestr = time.strftime("%Y%m%d-%H%M%S")
 
-        if self.checkpoint is not None:
-            self.model = self.load_checkpoint()
-            print(f'Finetuning from epoch: {self.current_epoch}')
-        else:
-            self.checkpoint = os.path.join(self.odir, f"model_{timestr}.pth")
-
-        self.history = os.path.join(self.odir, f"history_{timestr}.csv")
-
         self.loss_function = loss_function
         self.num_epochs = num_epochs
         self.optimizer = optimizer
         self.batch_size = batch_size
+
+        if self.checkpoint is not None:
+            self.model = self.load_checkpoint()
+            print(f'Finetuning from epoch: {self.current_epoch}')
+            start_epoch = self.current_epoch
+        else:
+            self.checkpoint = os.path.join(self.odir, f"model_{timestr}.pth")
+            start_epoch = 0
+
+        self.history = os.path.join(self.odir, f"history_{timestr}.csv")
+        total_epochs = start_epoch + self.num_epochs
+
         print(f"batch_size: {self.batch_size}")
 
         scheduler = ReduceLROnPlateau(self.optimizer, mode='min', patience=10, factor=0.5)
@@ -93,18 +97,22 @@ class DeepPETModelManager:
         epoch_train_accuracy_values = list()
         epoch_val_loss_values = list()
         epoch_val_accuracy_values = list()
-        for epoch in range(self.num_epochs + 1):
+
+        if self.loss_function.pos_weight is not None:
+            self.loss_function.pos_weight = self.loss_function.pos_weight.to(self.device)
+
+        for epoch in range(start_epoch, total_epochs + 1):
 
             start_time = time.time()
             print("-" * 10)
-            print(f"epoch {epoch}/{self.num_epochs}")
+            print(f"epoch {epoch}/{total_epochs}")
             epoch_loss = 0
             epoch_accuracy = 0
 
             # initialize train and valdiation and iterator 
             train_loader_iter = iter(train_loader)
             val_loader_iter = iter(val_loader)
-
+     
             self.model.train()
             for step in np.arange(train_steps):
                 batch_data = next(train_loader_iter)
@@ -113,9 +121,6 @@ class DeepPETModelManager:
 
                 self.optimizer.zero_grad()
                 outputs = self.model(inputs)
-
-                if self.loss_function.pos_weight is not None:
-                    self.loss_function.pos_weight = self.loss_function.pos_weight.to(self.device)
 
                 loss = self.loss_function(outputs.float(), labels.unsqueeze(1).float())
                 loss.backward()
@@ -132,7 +137,7 @@ class DeepPETModelManager:
             epoch_loss /= train_steps
             epoch_train_loss_values.append(epoch_loss)
             epoch_train_accuracy_values.append(epoch_accuracy)
-            print(f"\n{epoch}/{self.num_epochs}, train loss: {epoch_loss:.4f}, train accuracy: {epoch_accuracy:.4f}\n")
+            print(f"\n{epoch}/{total_epochs}, train loss: {epoch_loss:.4f}, train accuracy: {epoch_accuracy:.4f}\n")
             print(f"epoch time elapsed: {time.time() - start_time}")
 
             self.model.eval()
@@ -152,7 +157,7 @@ class DeepPETModelManager:
 
                 epoch_val_accuracy /= val_steps
                 epoch_val_loss /= val_steps
-                print(f"\n{epoch}/{self.num_epochs}, validation loss: {epoch_val_loss:.4f}, validation accuracy: {epoch_val_accuracy:.4f}\n")
+                print(f"\n{epoch}/{total_epochs}, validation loss: {epoch_val_loss:.4f}, validation accuracy: {epoch_val_accuracy:.4f}\n")
                 epoch_val_loss_values.append(epoch_val_loss)
                 epoch_val_accuracy_values.append(epoch_val_accuracy)
 
@@ -175,7 +180,7 @@ class DeepPETModelManager:
             # early stopping
             epoch_val_lss_values_arr = np.array(epoch_val_loss_values)
             min_idx = np.where(epoch_val_lss_values_arr == epoch_val_lss_values_arr.min())[0][0]
-            if epoch >= 25 and min_idx < len(epoch_val_lss_values_arr) - 25:
+            if epoch >= 25 + start_epoch and min_idx < len(epoch_val_lss_values_arr) - 25:
                 return self.model
 
         return self.model
