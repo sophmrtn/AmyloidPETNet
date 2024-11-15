@@ -36,14 +36,11 @@ try:
     # predict
     test_df = pd.read_csv(ds_path)
     # filter by test ids and take first visit
-    test_df = test_df[(test_df['amypad_id'].isin(args.ids)) & (test_df['visit_number']==0 ) ][['amypad_id', 'pet_vr_classification']]
-    y_true = (test_df['pet_vr_classification']=="Positive").astype(int).to_numpy()
 
     # QC check
     test_gen = DeepPETDataGenerator(
         args.data_dir,
         ids=args.ids,
-        labels=y_true
     )
     test_ds = test_gen.create_dataset(cache_dir=cdir, mode="prediction")
 
@@ -53,12 +50,6 @@ try:
     test_df["y_hat"] = (test_df["y_score"]>0.5).astype(int)
     test_df.to_csv('predictions.csv', index=False)
 
-    # Generate performance summary
-    acc = accuracy_score(y_true, test_df["y_hat"])
-    # auroc = roc_auc_score(y_true, test_df["y_score"])
-    print('Test acc:', acc)
-    # print('Test auroc:', auroc)
-    print(y_true)
 
 finally:
     # clear cache 
