@@ -61,8 +61,6 @@ class DeepPETModelManager:
             self.optimizer.load_state_dict(model_checkpoint["optimizer"])
         self.current_epoch = model_checkpoint["epoch"]
 
-        # create new checkpoint for ft model
-        self.checkpoint = os.path.join(self.odir, f"{os.path.splitext(os.path.basename(self.checkpoint))[0]}_ft.pth")
         return self.model
 
     def train_model(self, train_ds, val_ds, loss_function, num_epochs, optimizer, batch_size):
@@ -70,6 +68,9 @@ class DeepPETModelManager:
 
         if self.checkpoint is not None:
             self.model = self.load_checkpoint()
+            # create new checkpoint for ft model
+            self.checkpoint = os.path.join(self.odir, f"{os.path.splitext(os.path.basename(self.checkpoint))[0]}_ft.pth")
+
             print(f'Finetuning from epoch: {self.current_epoch}')
         else:
             self.checkpoint = os.path.join(self.odir, f"model_{timestr}.pth")
