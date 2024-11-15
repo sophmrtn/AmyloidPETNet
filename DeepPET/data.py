@@ -239,7 +239,7 @@ class DeepPETDataGenerator:
         self.fpaths = np.array(subject_filepaths)
         self.subjects = None
         self.tracers = None
-        self.labels = torch.from_numpy(labels)
+        self.labels = torch.from_numpy(labels) if labels is not None
 
         # training transforms
         self.transform_lst = [
