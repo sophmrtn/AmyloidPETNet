@@ -5,13 +5,11 @@ from DeepPET.data import DeepPETDataGenerator
 from DeepPET.architecture import DeepPETEncoderGradCAM
 from DeepPET.model import DeepPETModelManager
 from DeepPET.utils import sigmoid
-from sklearn.metrics import accuracy_score, roc_auc_score
 
 # initialize parser
 parser = argparse.ArgumentParser(description='DeepPET model testing')
 parser.add_argument('data_dir',
                         help='path to save/find extracted and downloaded scans')  
-
 parser.add_argument('--odir', help='model directory')
 parser.add_argument('--metadata', nargs='?',
                         help='path to metadata')  # assumes csv file is within data_dir if unspecified
@@ -24,6 +22,13 @@ odir = str(args.odir)
 print(f"model directory: {odir}")
 ds_path = str(args.metadata)
 print(f"path to testing dataset: {ds_path}")
+ids = args.ids
+data_dir = args.data_dir
+
+# fpaths = []
+# for amypad_id in args.ids:
+    # filepaths = glob.glob(os.path.join(data_dir, '**', f"*{amypad_id.replace('-','')}*T1w_pet.nii.gz"), recursive=True)
+    # fpaths.append(filepaths[0]) 
 
 # temporary file directory
 cdir = "tmp"
@@ -34,20 +39,19 @@ model_manager = DeepPETModelManager(model=model, odir=odir, checkpoint=os.path.j
 
 try:
     # predict
-    test_df = pd.read_csv(ds_path)
-    # filter by test ids and take first visit
+    test_df = pd.read_csv(args.metadata)
+    fpaths = [os.path.join(data_dir, f) for f in test_df['img_path'].values.flatten()] 
 
     # QC check
     test_gen = DeepPETDataGenerator(
-        args.data_dir,
-        ids=args.ids,
+        fpaths=fpaths
     )
     test_ds = test_gen.create_dataset(cache_dir=cdir, mode="prediction")
 
     outputs = model_manager.predict(test_ds=test_ds)
-    test_df["y_raw"] = outputs
-    test_df["y_score"] = test_df["y_raw"].apply(sigmoid)
-    test_df["y_hat"] = (test_df["y_score"]>0.5).astype(int)
+    test_df["y_score"] = outputs
+    test_df["y_prob"] = test_df["y_score"].apply(sigmoid)
+    test_df["y_pred"] = (test_df["y_prob"]>0.5).astype(int)
     test_df.to_csv('predictions.csv', index=False)
 
 
