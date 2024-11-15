@@ -225,25 +225,18 @@ class DebugShaped(transform.MapTransform):
 
 
 class DeepPETDataGenerator:
-    def __init__(self, data_dir, ids=None, labels=None):
+    def __init__(self, subjects=None, tracers=None, fpaths=None, labels=None):
 
         self.random_state = 2024
-        subject_filepaths = []
-        for amypad_id in ids:
-                # glob.glob uses '**' to search within 0 to any number of subdirectories for the file 
-                filepaths = glob.glob(os.path.join(data_dir, '**', f"*{amypad_id.replace('-','')}*T1w_pet.nii.gz"), recursive=True)
-                if len(filepaths) == 0:
-                    raise ValueError(f"No scans found for subject {amypad_id}. Aborting.")
-                else:
-                    subject_filepaths.append(filepaths[0]) 
-        self.fpaths = np.array(subject_filepaths)
-        self.subjects = None
-        self.tracers = None
-        self.labels = torch.from_numpy(labels) if labels is not None
+
+        self.fpaths = np.array(fpaths)
+        self.subjects = subjects
+        self.tracers = tracers
+        self.labels = torch.from_numpy(labels) if labels is not None else None
 
         # training transforms
         self.transform_lst = [
-            # DebugBefored(keys=["debug"]),
+            DebugBefored(keys=["debug"]),
             LoadImaged(keys=["img"]),
             # TODO: raise GitHub issue on orientation issue
             # Orientationd(keys=["img"], axcodes="RAS"),
@@ -272,7 +265,7 @@ class DeepPETDataGenerator:
                 rotate_range=(0.10, 0.10, 0.10),
                 padding_mode="zeros",
             ),
-            # DebugAfterd(keys=["debug"]),
+            DebugAfterd(keys=["debug"]),
             # clip intensity at 5 and 95 percentile
             ScaleIntensityRangePercentilesd(
                 keys=["img"], lower=5, upper=95, b_min=0, b_max=100, clip=True
@@ -286,7 +279,7 @@ class DeepPETDataGenerator:
         self.prediction_transform_lst = [
             LoadImaged(keys=["img"]),
             # expand channel because OASIS3 has 3 channels only
-            # ExpandChanneld(keys=["img"]),
+            ExpandChanneld(keys=["img"]),
             EnsureChannelFirstd(keys=["img"], channel_dim=-1),
             # set background pixels to 0
             SuppressBackgroundd(keys=["img"]),
