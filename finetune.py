@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 import torch
 from torch.nn import BCEWithLogitsLoss
-from torch.optim import AdamW
+from torch.optim import Adam
 
 parser = argparse.ArgumentParser(description='DeepPET model testing')
 parser.add_argument('data_dir',
@@ -55,7 +55,7 @@ ft_ds = ft_datagen.create_dataset(cache_dir="/tmp", idx=train_idxs, mode="traini
 ft_val_ds = ft_datagen.create_dataset(cache_dir="/tmp", idx=val_idxs, mode="validation")
 
 # pos_weight
-pos_w = ft_df.query('amypad_id in @train_ids & pet_vr_classification==0').shape[0]/ft_df.query('amypad_id in @train_ids & pet_vr_classification==1').shape[0]
+# pos_w = ft_df.query('amypad_id in @train_ids & pet_vr_classification==0').shape[0]/ft_df.query('amypad_id in @train_ids & pet_vr_classification==1').shape[0]
 
 # train the model
-model_manager.train_model(ft_ds, ft_val_ds, loss_function=BCEWithLogitsLoss(pos_weight=torch.tensor([pos_w])), optimizer=AdamW(model.parameters(), lr=0.01), num_epochs=20, batch_size=16)
+model_manager.train_model(ft_ds, ft_val_ds, loss_function=BCEWithLogitsLoss(), optimizer=Adam(model.parameters()), num_epochs=20, batch_size=4)
