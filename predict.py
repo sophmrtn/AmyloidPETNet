@@ -5,12 +5,25 @@ from DeepPET.data import DeepPETDataGenerator
 from DeepPET.architecture import DeepPETEncoderGradCAM
 from DeepPET.model import DeepPETModelManager
 from DeepPET.utils import sigmoid
+from tqdm import tqdm
 
 # initialize parser
 parser = argparse.ArgumentParser(description='DeepPET model testing')
+parser.add_argument(
+    '--odir', 
+    default="./model",
+    help='model directory')
+parser.add_argument(
+    '--cdir', 
+    default="/tmp",
+    help='temporary directory for storing cached files')
+parser.add_argument(
+    '--vdir', 
+    default=None,
+    help='directory for storing visualization files')
+
 parser.add_argument('data_dir',
-                        help='path to save/find extracted and downloaded scans')  
-parser.add_argument('--odir', help='model directory')
+        help='path to save/find extracted and downloaded scans')  
 parser.add_argument('--metadata', nargs='?',
                         help='path to metadata')  # assumes csv file is within data_dir if unspecified
 parser.add_argument('--ids', nargs='*',
@@ -22,6 +35,10 @@ odir = str(args.odir)
 print(f"model directory: {odir}")
 ds_path = str(args.metadata)
 print(f"path to testing dataset: {ds_path}")
+cdir = str(args.cdir)
+print(f"temporary directory: {cdir}")
+vdir = str(args.vdir)
+print(f"visualization directory: {vdir}")
 ids = args.ids
 data_dir = args.data_dir
 
@@ -29,9 +46,6 @@ data_dir = args.data_dir
 # for amypad_id in args.ids:
     # filepaths = glob.glob(os.path.join(data_dir, '**', f"*{amypad_id.replace('-','')}*T1w_pet.nii.gz"), recursive=True)
     # fpaths.append(filepaths[0]) 
-
-# temporary file directory
-cdir = "tmp"
 
 # initialize model and manager
 model = DeepPETEncoderGradCAM()
@@ -47,6 +61,20 @@ try:
         fpaths=fpaths
     )
     test_ds = test_gen.create_dataset(cache_dir=cdir, mode="prediction")
+    
+    if vdir is not None:
+        proc_img_lst = test_gen.preprocess_for_visualization(
+            fpaths=test_df["img_path"].values.flatten()
+        )
+        for i, proc_img in tqdm(
+            enumerate(proc_img_lst), 
+            desc="saving visualization", 
+            total=len(proc_img_lst)):
+            
+            test_gen.save_3d(
+                img_np=proc_img, 
+                odir=os.path.join(vdir, f"{int(i)}")
+            )
 
     outputs = model_manager.predict(test_ds=test_ds)
     test_df["y_score"] = outputs

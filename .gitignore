@@ -137,3 +137,5 @@ dmypy.json
 
 *.pth
 !model.pth
+tmp
+*.pyc
