@@ -1,4 +1,4 @@
-# Finetune AmyPETNet using visual read labels and AMYPAD dataset.
+# Finetune AmyPETNet model.
 
 from DeepPET.model import DeepPETModelManager
 from DeepPET.architecture import DeepPETEncoderGradCAM
@@ -14,16 +14,20 @@ from torch.optim import Adam
 parser = argparse.ArgumentParser(description='DeepPET model testing')
 parser.add_argument('data_dir',
                         help='path to save/find extracted and downloaded scans')  
-parser.add_argument('--metadata', nargs='?',
+parser.add_argument('--metadata', nargs='?', required=True,
                         help='path to metadata')  # assumes csv file is within data_dir if unspecified 
+parser.add_argument('--target_col', type=str,  required=True, help='Name of target column in metadata.')
 parser.add_argument('--ids', nargs='*',
                         help='text or list of IDs to include for training.')
+
 args = parser.parse_args()
+target_col = args.target_col
 
 def read_from_txt(filepath):
     with open(filepath, 'r') as f:
         lines = f.read().splitlines()
     return lines
+
 subject_ids = read_from_txt(args.ids[0]) if os.path.exists(args.ids[0]) else args.ids 
 
 # Load in model
@@ -34,17 +38,11 @@ model_manager = DeepPETModelManager(model=model, odir='model', checkpoint="model
 
 # Create dataloader from AMYPAD ds
 ft_df = pd.read_csv(args.metadata)
-# filter by ids
-ft_df = ft_df[ft_df['amypad_id'].isin(subject_ids)]
-
-# If label column is a string convert to int
-if type(ft_df['pet_vr_classification'].values[0]) is str:
-    ft_df['pet_vr_classification'] = (ft_df['pet_vr_classification']=="Positive").astype(int)
+fpaths = [os.path.join(args.data_dir, f) for f in ft_df['img_path'].values.flatten()] 
 
 ft_datagen = DeepPETDataGenerator(
-    args.data_dir,
-    ids=subject_ids,
-    labels=ft_df['pet_vr_classification'].values,
+    fpaths=fpaths,
+    labels=ft_df[target_col].values,
 )
 
 # split into training and validation indexes
@@ -53,9 +51,6 @@ train_ids = [subject_ids[i] for i in train_idxs]
 
 ft_ds = ft_datagen.create_dataset(cache_dir="/tmp", idx=train_idxs, mode="training")
 ft_val_ds = ft_datagen.create_dataset(cache_dir="/tmp", idx=val_idxs, mode="validation")
-
-# pos_weight
-# pos_w = ft_df.query('amypad_id in @train_ids & pet_vr_classification==0').shape[0]/ft_df.query('amypad_id in @train_ids & pet_vr_classification==1').shape[0]
 
 # train the model
 model_manager.train_model(ft_ds, ft_val_ds, loss_function=BCEWithLogitsLoss(), optimizer=Adam(model.parameters()), num_epochs=20, batch_size=4)
