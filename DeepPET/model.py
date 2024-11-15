@@ -55,12 +55,7 @@ class DeepPETModelManager:
         print(f"loading checkpoint from {self.checkpoint}")
 
         model_checkpoint = torch.load(self.checkpoint, map_location=self.device)
-
         self.model.load_state_dict(model_checkpoint["model"])
-        # Resume training from last checkpoint
-        self.optimizer.load_state_dict(model_checkpoint["optimizer"])
-        self.current_epoch = model_checkpoint["epoch"]
-
         return self.model
 
     def train_model(self, train_ds, val_ds, loss_function, num_epochs, optimizer, batch_size):
@@ -68,6 +63,10 @@ class DeepPETModelManager:
 
         if self.checkpoint is not None:
             self.model = self.load_checkpoint()
+            # Resume training from last checkpoint
+            self.optimizer.load_state_dict(model_checkpoint["optimizer"])
+            self.current_epoch = model_checkpoint["epoch"]
+
             # create new checkpoint for ft model
             self.checkpoint = os.path.join(self.odir, f"{os.path.splitext(os.path.basename(self.checkpoint))[0]}_ft.pth")
 
@@ -83,7 +82,6 @@ class DeepPETModelManager:
         self.batch_size = batch_size
 
         if self.checkpoint is not None:
-            self.model = self.load_checkpoint()
             print(f'Finetuning from epoch: {self.current_epoch}')
             start_epoch = self.current_epoch
         else:
