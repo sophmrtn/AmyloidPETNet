@@ -1,7 +1,6 @@
 import sys
 import os
 import time
-# from medcam.medcam_utils import generate_attention_map
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,7 +9,6 @@ from monai.data import DataLoader
 import torch
 from torch.autograd import Variable
 from torchsummary import summary
-from lime import lime_image
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 class DeepPETModelManager:
@@ -316,18 +314,6 @@ class DeepPETModelManager:
         grad_cam /= torch.max(grad_cam)
 
         return grad_cam
-
-    
-    def lime_explain(self, img_np, lime_predict, segmentation_fn):
-
-        explainer = lime_image.LimeImageExplainer()
-        explanation = explainer.explain_instance(img_np, lime_predict,
-                                                 segmentation_fn=segmentation_fn,
-                                                 top_labels=5, 
-                                                 hide_color=0, 
-                                                 num_samples=100)
-
-        return img_np, explanation
     
     def fetch_model(self):
 
